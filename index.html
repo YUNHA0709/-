@@ -392,6 +392,8 @@ function fetchContractFromSheet(contractNo) {
     .then(r => r.json())
     .then(data => {
       if(!data || !data.found) return;
+
+      // 계약 정보 자동완성
       const map = {
         sc:       data.SC       || '',
         customer: data.고객명   || '',
@@ -404,8 +406,43 @@ function fetchContractFromSheet(contractNo) {
       });
       if(data.금융구분) {
         const sel = document.getElementById('finType');
-        [...sel.options].forEach(o => { if(o.text === data.금융구분) sel.value = o.value; });
+        [...sel.options].forEach(o => { if(o.text === data.금융구분) sel.value = o.value||o.text; });
       }
+
+      // 품의 체크박스 복원
+      const puiMap = {
+        1: data.입금,
+        2: data.홀세일,
+        3: data.PDI,
+        4: data.매매계약서,
+        5: data.계약파일관리,
+      };
+      PUI_IDS.forEach(n => {
+        const el = document.getElementById('pui'+n);
+        if(puiMap[n] === true || puiMap[n] === 'TRUE') {
+          el.classList.add('checked');
+        } else {
+          el.classList.remove('checked');
+        }
+      });
+      updatePuiStatus();
+      updateSubmitBtn();
+
+      // 계약 등록 버튼 비활성화 (이미 등록된 계약번호)
+      document.getElementById('btnReg').disabled = true;
+      document.getElementById('btnReg').innerHTML = '💾 이미 등록됨';
+
+      // IF 결재 버튼 — 이미 완료된 경우 비활성화
+      const ifDone = data.IF결재 === true || data.IF결재 === 'TRUE';
+      const ifBtn  = document.getElementById('btnIF');
+      if(ifDone) {
+        ifBtn.disabled = true;
+        ifBtn.innerHTML = '📋 IF 결재 완료';
+      } else {
+        ifBtn.disabled = false;
+        ifBtn.innerHTML = '📋 IF 결재 요청';
+      }
+
       document.getElementById('autofillBadge').style.display = 'block';
       checkContractFilled();
     })
@@ -644,6 +681,8 @@ function resetForm() {
   PUI_IDS.forEach(n=>document.getElementById('pui'+n).classList.remove('checked'));
   judged=false; currentJudge=null;
   document.getElementById('autofillBadge').style.display='none';
+  document.getElementById('btnReg').innerHTML = '💾 계약 등록';
+  document.getElementById('btnIF').innerHTML  = '📋 IF 결재 요청';
   document.getElementById('resultPanel').style.display='none';
   document.getElementById('submitArea').style.display='none';
   document.getElementById('confirmArea').style.display='none';
