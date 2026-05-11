@@ -388,11 +388,10 @@ function onContractInput() {
 
 function fetchContractFromSheet(contractNo) {
   const url = SHEET_URL + '?action=lookup&contractNo=' + encodeURIComponent(contractNo);
-  fetch(url)
+  fetch(url, { method:'GET', mode:'cors' })
     .then(r => r.json())
     .then(data => {
       if(!data || !data.found) return;
-      // 불러오기
       const map = {
         sc:       data.SC       || '',
         customer: data.고객명   || '',
@@ -403,7 +402,6 @@ function fetchContractFromSheet(contractNo) {
         const el = document.getElementById(id);
         if(el && val) el.value = val;
       });
-      // 금융 구분 선택
       if(data.금융구분) {
         const sel = document.getElementById('finType');
         [...sel.options].forEach(o => { if(o.text === data.금융구분) sel.value = o.value; });
@@ -411,7 +409,7 @@ function fetchContractFromSheet(contractNo) {
       document.getElementById('autofillBadge').style.display = 'block';
       checkContractFilled();
     })
-    .catch(() => {}); // 조회 실패 시 무시
+    .catch(() => {});
 }
 
 /* ══════════════════════════════════════
@@ -458,10 +456,18 @@ function updateSubmitBtn() {
 function registerContract() {
   if(!isContractFilled()) { alert('계약 정보를 모두 입력해주세요.'); return; }
   const payload = {
-    구분:     '계약등록',
-    등록일시: new Date().toLocaleString('ko-KR'),
-    계약번호: v('contractNo'), SC: v('sc'), 고객명: v('customer'),
-    모델:     v('model'),     차대번호: v('vin'), 금융구분: v('finType'),
+    구분:             '계약등록',
+    계약번호:         v('contractNo'),
+    SC:               v('sc'),
+    고객명:           v('customer'),
+    모델:             v('model'),
+    차대번호:         v('vin'),
+    금융구분:         v('finType'),
+    입금체크:         false,
+    홀세일체크:       false,
+    PDI체크:          false,
+    매매계약서체크:   false,
+    계약파일관리체크: false,
   };
   sendData(payload, 'reg');
 }
@@ -472,11 +478,18 @@ function registerContract() {
 function requestIF() {
   if(!isContractFilled()) { alert('계약 정보를 모두 입력해주세요.'); return; }
   const payload = {
-    구분:     'IF결재요청',
-    요청일시: new Date().toLocaleString('ko-KR'),
-    계약번호: v('contractNo'), SC: v('sc'), 고객명: v('customer'),
-    모델:     v('model'),     차대번호: v('vin'), 금융구분: v('finType'),
-    품의진행: getPuiState(),
+    구분:             'IF결재요청',
+    계약번호:         v('contractNo'),
+    SC:               v('sc'),
+    고객명:           v('customer'),
+    모델:             v('model'),
+    차대번호:         v('vin'),
+    금융구분:         v('finType'),
+    입금체크:         isPuiChecked(1),
+    홀세일체크:       isPuiChecked(2),
+    PDI체크:          isPuiChecked(3),
+    매매계약서체크:   isPuiChecked(4),
+    계약파일관리체크: isPuiChecked(5),
   };
   sendData(payload, 'if');
 }
@@ -532,17 +545,24 @@ function submitRequest() {
   const regFee=dep-dlv-sp, expFee=sp*0.1, diff=regFee-expFee;
   const isOver = currentJudge==='over';
   const payload = {
-    구분:           '매출신청',
-    등록비초과여부: isOver?'🚨 초과':'',
-    신청일시:       new Date().toLocaleString('ko-KR'),
-    계약번호:       v('contractNo'), SC:v('sc'), 고객명:v('customer'),
-    모델:           v('model'),      차대번호:v('vin'), 금융구분:v('finType'),
-    판매가격:       sp, 입금계:dep, 탁송료:dlv,
-    등록비:         regFee, 실등록비예상:expFee, 차액:diff,
-    판정:           isOver?'초과':'정상',
-    품의진행:       getPuiState(),
-    컨펌구분:       v('confirmType'), 컨펌자:v('confirmName'),
-    컨펌일시:       v('confirmDt'),   컨펌사유:v('confirmNote'),
+    구분:             '매출신청',
+    계약번호:         v('contractNo'),
+    SC:               v('sc'),
+    고객명:           v('customer'),
+    모델:             v('model'),
+    차대번호:         v('vin'),
+    금융구분:         v('finType'),
+    입금체크:         isPuiChecked(1),
+    홀세일체크:       isPuiChecked(2),
+    PDI체크:          isPuiChecked(3),
+    매매계약서체크:   isPuiChecked(4),
+    계약파일관리체크: isPuiChecked(5),
+    등록비초과여부:   isOver?'🚨 초과':'',
+    판매가격:         sp, 입금계:dep, 탁송료:dlv,
+    등록비:           regFee, 실등록비예상:expFee, 차액:diff,
+    판정:             isOver?'초과':'정상',
+    컨펌구분:         v('confirmType'), 컨펌자:v('confirmName'),
+    컨펌일시:         v('confirmDt'),   컨펌사유:v('confirmNote'),
   };
   sendData(payload, 'submit');
 }
